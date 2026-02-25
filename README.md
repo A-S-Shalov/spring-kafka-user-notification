@@ -113,3 +113,6 @@ This project was created as a practical assignment to demonstrate:
 - Kafka integration
 - Email notifications
 - Clean service-layer design
+_________________________________________________________
+_________________________________________________________
+____
