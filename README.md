@@ -188,3 +188,4 @@ Body:
 - Swagger-документации API
 - принципов HATEOAS
 - аккуратного разделения слоёв (controller/service/repository)
+___
