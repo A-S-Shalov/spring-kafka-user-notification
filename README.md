@@ -1,191 +1,201 @@
 # 🚀 Spring Kafka User Notification Microservices
 
 ## 📌 Обзор
-Проект демонстрирует **event-driven (событийную) микросервисную архитектуру** на **Spring Boot** и **Apache Kafka**.
 
-Система состоит из двух микросервисов:
+Проект демонстрирует **event-driven (событийную) микросервисную
+архитектуру** на **Spring Boot**, **Apache Kafka** и **Spring Cloud**.
 
-- **user-service** — управляет пользователями и публикует события в Kafka  
-- **notification-service** — слушает события из Kafka и отправляет email-уведомления
+Система состоит из двух основных микросервисов:
 
-Когда пользователь **создаётся или удаляется**, событие публикуется в Kafka.  
-**notification-service** потребляет событие и отправляет письмо.
+-   **user-service** --- управляет пользователями и публикует события в
+    Kafka
+-   **notification-service** --- слушает события из Kafka и отправляет
+    email‑уведомления
 
----
+Когда пользователь **создаётся или удаляется**, событие публикуется в
+Kafka. **notification-service** потребляет событие и отправляет письмо.
 
-## 🏗 Архитектура
-```
-User → user-service → Kafka → notification-service → SMTP → MailHog
-```
+Дополнительно в проекте реализованы инфраструктурные компоненты **Spring
+Cloud**:
 
----
+-   API Gateway
+-   Service Discovery (Eureka)
+-   External Configuration (Config Server)
+-   Circuit Breaker (Resilience4j)
 
-## 🛠 Технологии
-- Java 17  
-- Spring Boot  
-- Spring Data JPA  
-- PostgreSQL  
-- Apache Kafka  
-- Spring Kafka  
-- Spring Mail (JavaMailSender)  
-- MailHog (SMTP для тестирования писем)  
-- Maven  
-- **Springdoc OpenAPI (Swagger)**  
-- **Spring HATEOAS**
+------------------------------------------------------------------------
 
----
+# 🏗 Архитектура
 
-## 📖 Документация API (Swagger)
-В проекте подключена **интерактивная документация API** через **Springdoc OpenAPI (Swagger)**.
+Client │ ▼ API Gateway (8085) │ ▼ user-service (8080) │ ▼ Kafka │ ▼
+notification-service (8081) │ ▼ SMTP │ ▼ MailHog
 
-Swagger UI позволяет:
-- быстро посмотреть доступные endpoints
-- увидеть схемы запросов/ответов
-- тестировать API прямо в браузере (Try it out)
+Инфраструктурные сервисы:
 
-Swagger UI доступен по адресу:
-```
-http://localhost:8080/swagger-ui/index.html
-```
+Eureka Server (Service Discovery) → 8761 Config Server (External
+Configuration) → 8888
 
-Примеры задокументированных endpoints:
-- `GET /api/users`
-- `GET /api/users/{id}`
-- `POST /api/users`
-- `PUT /api/users/{id}`
-- `DELETE /api/users/{id}`
+------------------------------------------------------------------------
 
-Каждый endpoint описан с помощью аннотаций:
-- `@Tag`
-- `@Operation`
-- `@ApiResponses`
+# ☁ Spring Cloud архитектурные паттерны
 
----
+## API Gateway
 
-## 🔗 Поддержка HATEOAS
-API реализует **HATEOAS (Hypermedia as the Engine of Application State)** с помощью **Spring HATEOAS**.
+Реализован с помощью **Spring Cloud Gateway**.
 
-Ответы API содержат навигационные ссылки (`_links`), чтобы клиент мог **переходить по ресурсам**, не «хардкодя» URL.
+Gateway является **единой точкой входа** для всех внешних запросов.
+
+Пример запроса:
+
+GET http://localhost:8085/api/users
+
+------------------------------------------------------------------------
+
+## Service Discovery
+
+Реализован с помощью **Spring Cloud Netflix Eureka**.
+
+Все сервисы регистрируются в **Eureka Server** и могут находить друг
+друга по имени.
+
+Eureka UI: http://localhost:8761
+
+Зарегистрированные сервисы:
+
+-   user-service
+-   notification-service
+-   api-gateway
+-   config-server
+
+------------------------------------------------------------------------
+
+## External Configuration
+
+Реализован через **Spring Cloud Config Server**.
+
+Config Server централизует конфигурацию сервисов.
+
+Адрес: http://localhost:8888
+
+------------------------------------------------------------------------
+
+## Circuit Breaker
+
+Реализован с помощью **Resilience4j**.
+
+Если notification-service недоступен:
+
+-   user-service не падает
+-   используется fallback‑механизм
+
+Пример лога:
+
+Notification service unavailable. Fallback worked
+
+------------------------------------------------------------------------
+
+# 🛠 Технологии
+
+-   Java 17
+-   Spring Boot
+-   Spring Cloud
+-   Spring Data JPA
+-   PostgreSQL
+-   Apache Kafka
+-   Spring Kafka
+-   Spring Mail
+-   MailHog
+-   Maven
+-   Springdoc OpenAPI (Swagger)
+-   Spring HATEOAS
+-   Resilience4j
+
+------------------------------------------------------------------------
+
+# 📖 Документация API (Swagger)
+
+Swagger UI: http://localhost:8080/swagger-ui/index.html
+
+Основные endpoints:
+
+GET /api/users\
+GET /api/users/{id}\
+POST /api/users\
+PUT /api/users/{id}\
+DELETE /api/users/{id}
+
+------------------------------------------------------------------------
+
+# 🔗 Поддержка HATEOAS
+
+API реализует **HATEOAS** с помощью Spring HATEOAS.
 
 Пример ответа:
-```json
-{
-  "id": 6,
-  "name": "Test User",
-  "email": "test1@mail.com",
-  "age": 20,
-  "createdAt": "2026-03-05T15:46:22.019709Z",
-  "_links": {
-    "self": {
-      "href": "http://localhost:8080/api/users/6"
-    },
-    "users": {
-      "href": "http://localhost:8080/api/users"
-    }
-  }
-}
-```
 
-Формат ответа — **HAL**:
-```
-Content-Type: application/hal+json
-```
+{ "id": 6, "name": "Test User", "email": "test@mail.com", "age": 20,
+"createdAt": "2026-03-05T15:46:22.019709Z", "\_links": { "self": {
+"href": "http://localhost:8080/api/users/6" }, "users": { "href":
+"http://localhost:8080/api/users" } } }
 
----
+------------------------------------------------------------------------
 
-## ⚙️ Как запустить
+# ⚙️ Как запустить
 
-### 1️⃣ Поднять инфраструктуру (Docker)
-Нужные сервисы:
-- PostgreSQL (порт **5432**)
-- Kafka (порт **9092**)
-- MailHog
+## 1. Поднять инфраструктуру
 
-Порты MailHog:
-```
-SMTP: 1025
-UI:   8025
-```
+Необходимые сервисы:
 
-MailHog UI:
-```
-http://localhost:8025
-```
+-   PostgreSQL (5432)
+-   Kafka (9092)
+-   MailHog
 
----
+MailHog:
 
-### 2️⃣ Запустить user-service
-Сервис доступен по адресу:
-```
-http://localhost:8080
-```
+SMTP: 1025\
+UI: http://localhost:8025
 
----
+------------------------------------------------------------------------
 
-### 3️⃣ Запустить notification-service
-Сервис доступен по адресу:
-```
-http://localhost:8081
-```
+## 2. Запустить инфраструктурные сервисы
 
----
+1.  discovery-server
+2.  config-server
+3.  api-gateway
 
-## 📬 Тестирование
+------------------------------------------------------------------------
 
-### Тест notification-service напрямую
-```
-POST http://localhost:8081/api/notifications/email
-```
+## 3. Запустить микросервисы
 
-Body:
-```json
-{
-  "email": "test@test.com",
-  "operation": "CREATED"
-}
-```
+1.  user-service → http://localhost:8080
+2.  notification-service → http://localhost:8081
 
----
+------------------------------------------------------------------------
 
-### Тест полного потока (Kafka)
-1) Создать пользователя через **user-service**  
-2) Событие отправится в **Kafka**  
-3) **notification-service** получит событие  
-4) Письмо появится в **MailHog**
+# 📬 Тестирование
 
----
+Создание пользователя:
 
-## 📦 Модель события
+POST http://localhost:8085/api/users
 
-### UserEvent
-Поля:
-- `operation` (CREATED / DELETED)
-- `email`
+{ "name": "Test User", "email": "test@test.com", "age": 25 }
 
-Пример:
-```json
-{
-  "operation": "CREATED",
-  "email": "user@test.com"
-}
-```
+Полный поток:
 
----
+1.  Создание пользователя
+2.  Событие отправляется в Kafka
+3.  notification-service получает событие
+4.  письмо появляется в MailHog
 
-## 🧪 Интеграционные тесты
-В проекте есть интеграционные тесты для:
-- потребления Kafka-событий
-- отправки email через тестовый SMTP (MailHog)
+------------------------------------------------------------------------
 
----
+# 🎯 Назначение
 
-## 🎯 Назначение
-Проект создан как практическое задание для демонстрации:
-- микросервисной архитектуры
-- событийного взаимодействия (event-driven)
-- интеграции Kafka
-- email-уведомлений
-- Swagger-документации API
-- принципов HATEOAS
-- аккуратного разделения слоёв (controller/service/repository)
-___
+Проект демонстрирует:
+
+-   микросервисную архитектуру
+-   событийное взаимодействие (event‑driven)
+-   интеграцию Kafka
+-   email‑уведомления
+-   Swagger документацию API
+-   принципы HATEOAS
+-   Spring Cloud паттерны
