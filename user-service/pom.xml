@@ -21,6 +21,7 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
     </properties>
 
     <dependencies>
@@ -75,6 +76,18 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- Service discovery client (Eureka) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+
+        <!-- Circuit Breaker (Resilience4j) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+        </dependency>
+
         <!-- ===================== TESTS ===================== -->
 
         <dependency>
@@ -104,10 +117,20 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Testcontainers versions -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud versions -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

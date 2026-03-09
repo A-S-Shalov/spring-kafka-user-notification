@@ -10,22 +10,36 @@ import com.example.userservice.kafka.UserOperation;
 import com.example.userservice.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class UserService {
+
     @PersistenceContext
     private EntityManager entityManager;
 
     private final UserRepository userRepository;
     private final UserEventProducer userEventProducer;
+    private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    public UserService(UserRepository userRepository, UserEventProducer userEventProducer) {
+    public UserService(
+            UserRepository userRepository,
+            UserEventProducer userEventProducer,
+            CircuitBreakerFactory<?, ?> circuitBreakerFactory
+    ) {
         this.userRepository = userRepository;
         this.userEventProducer = userEventProducer;
+        this.circuitBreakerFactory = circuitBreakerFactory;
     }
 
     @Transactional
@@ -35,6 +49,7 @@ public class UserService {
         entityManager.refresh(saved);
 
         userEventProducer.send(new UserEvent(UserOperation.CREATED, saved.getEmail()));
+        sendNotificationWithCircuitBreaker(saved.getEmail(), UserOperation.CREATED);
 
         return toDto(saved);
     }
@@ -75,6 +90,31 @@ public class UserService {
         userRepository.delete(existing);
 
         userEventProducer.send(new UserEvent(UserOperation.DELETED, email));
+        sendNotificationWithCircuitBreaker(email, UserOperation.DELETED);
+    }
+
+    private void sendNotificationWithCircuitBreaker(String email, UserOperation operation) {
+        circuitBreakerFactory.create("notificationService").run(
+                () -> {
+                    String url = "http://localhost:8081/api/notifications/email";
+
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+
+                    Map<String, String> body = Map.of(
+                            "email", email,
+                            "operation", operation.name()
+                    );
+
+                    HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
+                    restTemplate.postForEntity(url, request, Void.class);
+                    return null;
+                },
+                throwable -> {
+                    System.out.println("Notification service unavailable. Fallback worked: " + throwable.getMessage());
+                    return null;
+                }
+        );
     }
 
     private UserDto toDto(User user) {
