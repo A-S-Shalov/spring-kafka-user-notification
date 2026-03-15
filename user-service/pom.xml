@@ -76,6 +76,12 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- Config Client: позволяет сервису получать конфигурацию из Config Server -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+
         <!-- Service discovery client (Eureka) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

@@ -4,6 +4,7 @@ server:
 spring:
   application:
     name: config-server
+
   profiles:
     active: native
 
@@ -11,9 +12,9 @@ spring:
     config:
       server:
         native:
-          search-locations: classpath:/config
+          search-locations: classpath:/config-repo
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}

@@ -1,0 +1,129 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: user_service
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.4
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.4
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  discovery-server:
+    build: ./discovery-server
+    container_name: discovery-server
+    ports:
+      - "8761:8761"
+
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    depends_on:
+      - discovery-server
+    ports:
+      - "8888:8888"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    depends_on:
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user_service
+      SPRING_DATASOURCE_USERNAME: app
+      SPRING_DATASOURCE_PASSWORD: app
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NOTIFICATION_SERVICE_URL: http://notification-service:8081/api/notifications/email
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    depends_on:
+      kafka:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+      config-server:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    ports:
+      - "8081:8081"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    depends_on:
+      discovery-server:
+        condition: service_started
+      config-server:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    ports:
+      - "8085:8085"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+
+volumes:
+  postgres_data:

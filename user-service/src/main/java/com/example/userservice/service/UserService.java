@@ -10,6 +10,7 @@ import com.example.userservice.kafka.UserOperation;
 import com.example.userservice.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +32,9 @@ public class UserService {
     private final UserEventProducer userEventProducer;
     private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${app.notification-service.url}")
+    private String notificationServiceUrl;
 
     public UserService(
             UserRepository userRepository,
@@ -96,7 +100,7 @@ public class UserService {
     private void sendNotificationWithCircuitBreaker(String email, UserOperation operation) {
         circuitBreakerFactory.create("notificationService").run(
                 () -> {
-                    String url = "http://localhost:8081/api/notifications/email";
+                    String url = notificationServiceUrl;
 
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_JSON);
