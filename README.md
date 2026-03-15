@@ -199,3 +199,5 @@ POST http://localhost:8085/api/users
 -   Swagger документацию API
 -   принципы HATEOAS
 -   Spring Cloud паттерны
+___
+___
